@@ -94,28 +94,28 @@ const ScreenRecording = ({
     };
 
     useEffect(() => {
-      socket.on("start", () => {
+      socket.on("start_recording", () => {
         console.log("empezado");
         startRecording();
       });
 
-      socket.on("pausar", () => {
+      socket.on("pausar_recording", () => {
         console.log("pausado");
         pauseRecording();
       });
 
-      socket.on("continuar", () => {
+      socket.on("continuar_recording", () => {
         console.log("renaudado");
         resumeRecording();
       });
 
-      socket.on("stop", () => {
+      socket.on("stop_recording", () => {
         console.log("stop");
         stopRecording();
       });
 
-      socket.on("stream", () => {
-        console.log("descargado");
+      socket.on("upload_recording", () => {
+        console.log("upload_recording");
         downloadRecording();
       });
     });
