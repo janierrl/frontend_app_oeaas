@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { Row, Col, Button, Badge, Space } from "antd";
 import { useReactMediaRecorder } from "react-media-recorder";
 import Text from "antd/lib/typography/Text";
@@ -26,6 +26,8 @@ const ScreenRecording = ({
 }) => {
   const [recordingNumber, setRecordingNumber] = useState(0);
   const [blob, setBlob] = useState(0);
+  const blobRef = useRef(blob);
+
   const RecordView = () => {
     const {
       status,
@@ -40,31 +42,56 @@ const ScreenRecording = ({
       video: video,
       onStop: (blobUrl, blob) => {
         setBlob(blob);
+        blobRef.current = blob;
       },
     });
 
-    const startRecording = () => {
+    const startRecording = useCallback(() => {
       return startRecord();
-    };
-    const pauseRecording = () => {
+    }, [startRecord]);
+
+    const pauseRecording = useCallback(() => {
       return pauseRecord();
-    };
-    const resumeRecording = () => {
+    }, [pauseRecord]);
+
+    const resumeRecording = useCallback(() => {
       return resumeRecord();
-    };
-    const stopRecording = () => {
+    }, [resumeRecord]);
+
+    const stopRecording = useCallback(() => {
       const currentTimeSatmp = new Date().getTime();
+      
       setRecordingNumber(currentTimeSatmp);
       return stopRecord();
-    };
+    }, [stopRecord]);
+
     const viewRecording = () => {
       window.open(mediaBlobUrl, "_blank").focus();
     };
-    const downloadRecording = async () => {
-      const pathName = `${downloadRecordingPath}_${recordingNumber}.${downloadRecordingType}`;
+
+    const downloadRecording = useCallback(async (data) => {
+      const detailsScreen = {
+        nameScreen: data.nameScreen,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        nameConsultancy: data.nameConsultancy
+      };
+      const detailsConsultancy = {
+        nameConsultancy: data.nameConsultancy,
+        startDateConsultancy: data.startDateConsultancy,
+        endDateConsultancy: data.endDateConsultancy,
+        observationType: data.observationType,
+        goals: data.goals
+      };
+      const pathName = `${data.nameScreen}.${downloadRecordingType}`;
+      const formattedJSONScreen = JSON.stringify(detailsScreen, null, 2);
+      const formattedJSONConsultancy = JSON.stringify(detailsConsultancy, null, 2);
+
       try {
         const formData = new FormData();
-        formData.append("video", blob, pathName);
+        formData.append("video", blobRef.current, pathName);
+        formData.append("json_screen", new Blob([formattedJSONScreen], { type: "application/json" }), `info.json`);
+        formData.append("json_consultancy", new Blob([formattedJSONConsultancy], { type: "application/json" }), `info.json`);
 
         await axios.post("http://localhost:3002/files", formData, {
           headers: {
@@ -74,7 +101,8 @@ const ScreenRecording = ({
       } catch (err) {
         console.error(err);
       }
-    };
+    }, []);;
+
     downloadRecordingType && mediaBlobUrl && status === "stopped" && (
       <Button
         size="small"
@@ -85,6 +113,7 @@ const ScreenRecording = ({
         Descargar
       </Button>
     );
+
     const mailRecording = () => {
       try {
         window.location.href = `mailTo:${emailToSupport}?subject=Screen recording for an Issue number ${recordingNumber}&body=Hello%20Team,%0D%0A%0D%0A${mediaBlobUrl}`;
@@ -94,31 +123,38 @@ const ScreenRecording = ({
     };
 
     useEffect(() => {
-      socket.on("start_recording", () => {
-        console.log("empezado");
-        startRecording();
-      });
+      if (status === 'recording') {
+        socket.emit("started");
+      } else if (status === 'paused') {
+        socket.emit("paused");
+      } else if (status === 'stopped') {
+        socket.emit("stopped");
+      }
+    }, [status]);
+  
+    useEffect(() => {
+      const startRecordingListener = () => startRecording();
+      const pauseRecordingListener = () => pauseRecording();
+      const resumeRecordingListener = () => resumeRecording();
+      const stopRecordingListener = () => stopRecording();
+      const uploadRecordingListener = (data) => {
+        downloadRecording(data);
+      };
 
-      socket.on("pausar_recording", () => {
-        console.log("pausado");
-        pauseRecording();
-      });
-
-      socket.on("continuar_recording", () => {
-        console.log("renaudado");
-        resumeRecording();
-      });
-
-      socket.on("stop_recording", () => {
-        console.log("stop");
-        stopRecording();
-      });
-
-      socket.on("upload_recording", () => {
-        console.log("upload_recording");
-        downloadRecording();
-      });
-    });
+      socket.on("start_recording", startRecordingListener);
+      socket.on("pausar_recording", pauseRecordingListener);
+      socket.on("continuar_recording", resumeRecordingListener);
+      socket.on("stop_recording", stopRecordingListener);
+      socket.on("upload_recording", uploadRecordingListener);
+  
+      return () => {
+        socket.off("start_recording", startRecordingListener);
+        socket.off("pausar_recording", pauseRecordingListener);
+        socket.off("continuar_recording", resumeRecordingListener);
+        socket.off("stop_recording", stopRecordingListener);
+        socket.off("upload_recording", uploadRecordingListener);
+      };
+    }, [startRecording, pauseRecording, resumeRecording, stopRecording, downloadRecording]);
 
     return (
       <Row>
