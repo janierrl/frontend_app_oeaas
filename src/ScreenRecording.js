@@ -5,22 +5,21 @@ import Text from "antd/lib/typography/Text";
 import io from "socket.io-client";
 import { useEffect } from "react";
 import axios from "axios";
-import { 
-  PlayCircleOutlined, 
-  StopOutlined, 
-  PauseCircleOutlined, 
-  StepForwardOutlined, 
+import {
+  PlayCircleOutlined,
+  StopOutlined,
+  PauseCircleOutlined,
+  StepForwardOutlined,
   PictureOutlined,
   CloudUploadOutlined,
-  MailOutlined
-} from '@ant-design/icons';
+  MailOutlined,
+} from "@ant-design/icons";
 const socket = io.connect("http://localhost:3001");
 
 const ScreenRecording = ({
   screen,
   audio,
   video,
-  downloadRecordingPath,
   downloadRecordingType,
   emailToSupport,
 }) => {
@@ -61,7 +60,7 @@ const ScreenRecording = ({
 
     const stopRecording = useCallback(() => {
       const currentTimeSatmp = new Date().getTime();
-      
+
       setRecordingNumber(currentTimeSatmp);
       return stopRecord();
     }, [stopRecord]);
@@ -79,7 +78,7 @@ const ScreenRecording = ({
           canvas.height = video.videoHeight;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
           canvas.toBlob((blob) => {
             resolve(blob);
           }, "image/png");
@@ -96,34 +95,46 @@ const ScreenRecording = ({
           nameScreen: data.nameScreen,
           startDate: data.startDate,
           endDate: data.endDate,
-          nameConsultancy: data.nameConsultancy
+          nameConsultancy: data.nameConsultancy,
         };
         const detailsConsultancy = {
           nameConsultancy: data.nameConsultancy,
           startDateConsultancy: data.startDateConsultancy,
           endDateConsultancy: data.endDateConsultancy,
           author: data.author,
-          entity: data.entity, 
-          ueb: data.ueb, 
-          unit: data.unit, 
-          area: data.area, 
-          process: data.process, 
+          entity: data.entity,
+          ueb: data.ueb,
+          unit: data.unit,
+          area: data.area,
+          process: data.process,
           worker: data.worker,
           observationType: data.observationType,
           view: data.view,
           collaborators: data.collaborators,
-          goals: data.goals
+          goals: data.goals,
         };
         const pathName = `screen.${downloadRecordingType}`;
         const formattedJSONScreen = JSON.stringify(detailsScreen, null, 2);
-        const formattedJSONConsultancy = JSON.stringify(detailsConsultancy, null, 2);
+        const formattedJSONConsultancy = JSON.stringify(
+          detailsConsultancy,
+          null,
+          2
+        );
         const formData = new FormData();
 
         formData.append("video", blobRef.current, pathName);
-        formData.append("json_screen", new Blob([formattedJSONScreen], { type: "application/json" }), `info.json`);
-        formData.append("json_consultancy", new Blob([formattedJSONConsultancy], { type: "application/json" }), `info.json`);
+        formData.append(
+          "json_screen",
+          new Blob([formattedJSONScreen], { type: "application/json" }),
+          `info.json`
+        );
+        formData.append(
+          "json_consultancy",
+          new Blob([formattedJSONConsultancy], { type: "application/json" }),
+          `info.json`
+        );
         formData.append("thumbnail", image, `thumbnail.png`);
-    
+
         await axios.post("http://localhost:3002/files", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -154,15 +165,15 @@ const ScreenRecording = ({
     };
 
     useEffect(() => {
-      if (status === 'recording') {
+      if (status === "recording") {
         socket.emit("started");
-      } else if (status === 'paused') {
+      } else if (status === "paused") {
         socket.emit("paused");
-      } else if (status === 'stopped') {
+      } else if (status === "stopped") {
         socket.emit("stopped");
       }
     }, [status]);
-  
+
     useEffect(() => {
       const startRecordingListener = () => startRecording();
       const pauseRecordingListener = () => pauseRecording();
@@ -177,7 +188,7 @@ const ScreenRecording = ({
       socket.on("continuar_recording", resumeRecordingListener);
       socket.on("stop_recording", stopRecordingListener);
       socket.on("upload_recording", uploadRecordingListener);
-  
+
       return () => {
         socket.off("start_recording", startRecordingListener);
         socket.off("pausar_recording", pauseRecordingListener);
@@ -185,15 +196,19 @@ const ScreenRecording = ({
         socket.off("stop_recording", stopRecordingListener);
         socket.off("upload_recording", uploadRecordingListener);
       };
-    }, [startRecording, pauseRecording, resumeRecording, stopRecording, downloadRecording]);
+    }, [
+      startRecording,
+      pauseRecording,
+      resumeRecording,
+      stopRecording,
+      downloadRecording,
+    ]);
 
     return (
       <Row>
         <Col span="12" style={{ lineHeight: "24px" }}>
           {status && status !== "stopped" && (
-            <Text>
-              Estado: {status && status.toUpperCase()}
-            </Text>
+            <Text>Estado: {status && status.toUpperCase()}</Text>
           )}
           {status && status === "recording" && (
             <Badge
@@ -232,9 +247,9 @@ const ScreenRecording = ({
               </Button>
             )}
             {status && status === "recording" && (
-              <Button 
-                size="small" 
-                onClick={pauseRecording} 
+              <Button
+                size="small"
+                onClick={pauseRecording}
                 type="primary"
                 icon={<PauseCircleOutlined />}
                 danger
@@ -253,9 +268,9 @@ const ScreenRecording = ({
               </Button>
             )}
             {mediaBlobUrl && status === "stopped" && (
-              <Button 
-                size="small" 
-                onClick={viewRecording} 
+              <Button
+                size="small"
+                onClick={viewRecording}
                 type="primary"
                 icon={<PictureOutlined />}
               >
@@ -263,9 +278,9 @@ const ScreenRecording = ({
               </Button>
             )}
             {mediaBlobUrl && status && status === "stopped" && (
-              <Button 
-                size="small" 
-                onClick={downloadRecording} 
+              <Button
+                size="small"
+                onClick={downloadRecording}
                 type="primary"
                 icon={<CloudUploadOutlined />}
               >
@@ -277,8 +292,8 @@ const ScreenRecording = ({
               status &&
               status === "stopped" && (
                 <Button
-                  size="small" 
-                  onClick={mailRecording} 
+                  size="small"
+                  onClick={mailRecording}
                   type="primary"
                   icon={<MailOutlined />}
                 >
@@ -286,7 +301,7 @@ const ScreenRecording = ({
                 </Button>
               )}
             {mediaBlobUrl && status === "stopped" && (
-              <video ref={videoRef} src={mediaBlobUrl}  controls />
+              <video ref={videoRef} src={mediaBlobUrl} controls />
             )}
           </Space>
         </Col>
