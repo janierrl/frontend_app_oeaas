@@ -27,6 +27,7 @@ const ScreenRecording = ({
   const [recordingNumber, setRecordingNumber] = useState(0);
   const [blob, setBlob] = useState(0);
   const blobRef = useRef(blob);
+  const videoRef = useRef(null);
 
   const RecordView = () => {
     const {
@@ -69,30 +70,60 @@ const ScreenRecording = ({
       window.open(mediaBlobUrl, "_blank").focus();
     };
 
-    const downloadRecording = useCallback(async (data) => {
-      const detailsScreen = {
-        nameScreen: data.nameScreen,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        nameConsultancy: data.nameConsultancy
-      };
-      const detailsConsultancy = {
-        nameConsultancy: data.nameConsultancy,
-        startDateConsultancy: data.startDateConsultancy,
-        endDateConsultancy: data.endDateConsultancy,
-        observationType: data.observationType,
-        goals: data.goals
-      };
-      const pathName = `${data.nameScreen}.${downloadRecordingType}`;
-      const formattedJSONScreen = JSON.stringify(detailsScreen, null, 2);
-      const formattedJSONConsultancy = JSON.stringify(detailsConsultancy, null, 2);
+    const captureFrame = () => {
+      return new Promise((resolve, reject) => {
+        if (videoRef.current) {
+          const video = videoRef.current;
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, "image/png");
+        } else {
+          reject(new Error("Video element not found."));
+        }
+      });
+    };
 
+    const downloadRecording = useCallback(async (data) => {
       try {
+        const image = await captureFrame();
+        const detailsScreen = {
+          nameScreen: data.nameScreen,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          nameConsultancy: data.nameConsultancy
+        };
+        const detailsConsultancy = {
+          nameConsultancy: data.nameConsultancy,
+          startDateConsultancy: data.startDateConsultancy,
+          endDateConsultancy: data.endDateConsultancy,
+          author: data.author,
+          entity: data.entity, 
+          ueb: data.ueb, 
+          unit: data.unit, 
+          area: data.area, 
+          process: data.process, 
+          worker: data.worker,
+          observationType: data.observationType,
+          view: data.view,
+          collaborators: data.collaborators,
+          goals: data.goals
+        };
+        const pathName = `screen.${downloadRecordingType}`;
+        const formattedJSONScreen = JSON.stringify(detailsScreen, null, 2);
+        const formattedJSONConsultancy = JSON.stringify(detailsConsultancy, null, 2);
         const formData = new FormData();
+
         formData.append("video", blobRef.current, pathName);
         formData.append("json_screen", new Blob([formattedJSONScreen], { type: "application/json" }), `info.json`);
         formData.append("json_consultancy", new Blob([formattedJSONConsultancy], { type: "application/json" }), `info.json`);
-
+        formData.append("thumbnail", image, `thumbnail.png`);
+    
         await axios.post("http://localhost:3002/files", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -101,7 +132,7 @@ const ScreenRecording = ({
       } catch (err) {
         console.error(err);
       }
-    }, []);;
+    }, []);
 
     downloadRecordingType && mediaBlobUrl && status === "stopped" && (
       <Button
@@ -254,6 +285,9 @@ const ScreenRecording = ({
                   Enviar por Correo
                 </Button>
               )}
+            {mediaBlobUrl && status === "stopped" && (
+              <video ref={videoRef} src={mediaBlobUrl}  controls />
+            )}
           </Space>
         </Col>
       </Row>
