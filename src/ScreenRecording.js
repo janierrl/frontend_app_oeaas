@@ -134,6 +134,7 @@ const ScreenRecording = ({
           `info.json`
         );
         formData.append("thumbnail", image, `thumbnail.png`);
+        formData.append("bucket", data.bucket);
 
         await axios.post("http://localhost:3002/files", formData, {
           headers: {
